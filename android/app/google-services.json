@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "701159381264",
+    "project_id": "be-real-2c921",
+    "storage_bucket": "be-real-2c921.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:701159381264:android:01b875af9be25f4b586d95",
+        "android_client_info": {
+          "package_name": "com.example.be_real"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB32xbMPF4ID2C8eJRDTl6_frMUBPySzt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
