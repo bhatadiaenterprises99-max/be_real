@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:get/get.dart';
+import 'package:be_real/ui/controllers/task_controller.dart';
+import 'package:be_real/ui/mobile/upload_media_screen.dart';
+import 'package:be_real/widgets/common_button.dart';
 
 class UserTasksScreen extends StatefulWidget {
   const UserTasksScreen({super.key});
@@ -9,7 +13,14 @@ class UserTasksScreen extends StatefulWidget {
 }
 
 class _UserTasksScreenState extends State<UserTasksScreen> {
-  bool _showDetails = true;
+  late TaskController taskController;
+
+  @override
+  void initState() {
+    super.initState();
+    taskController = Get.put(TaskController());
+    taskController.loadMonitorSites();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +29,7 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Modern header with back button and title
+            // Modern header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Row(
@@ -35,7 +46,7 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
                   ),
                   const SizedBox(width: 16),
                   Text(
-                    "Today's Tasks",
+                    "Assigned Tasks",
                     style: GoogleFonts.poppins(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
@@ -71,14 +82,40 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
 
             const SizedBox(height: 24),
 
-            // Task card
+            // List of assigned sites
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 24),
+              child: Obx(() {
+                if (taskController.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (taskController.hasError.value) {
+                  return Center(
+                    child: Text(
+                      taskController.errorMessage.value,
+                      style: GoogleFonts.poppins(color: Colors.red),
+                    ),
+                  );
+                }
+
+                if (taskController.assignedSites.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No assigned sites found',
+                      style: GoogleFonts.poppins(fontSize: 16),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: taskController.assignedSites.length,
+                  itemBuilder: (context, index) {
+                    final site = taskController.assignedSites[index];
+                    final siteId = site['id'] as String;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -94,42 +131,15 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Media preview
-                          Container(
-                            height: 180,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(24),
-                                topRight: Radius.circular(24),
-                              ),
-                            ),
-                            child: const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.photo_camera_outlined,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Media Preview',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
+                          _buildMediaPreview(siteId),
                           Padding(
                             padding: const EdgeInsets.all(24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Campaign header
+                                // Company header
                                 Text(
-                                  'Campaign name',
+                                  'Company',
                                   style: GoogleFonts.poppins(
                                     color: Colors.grey,
                                     fontSize: 14,
@@ -141,7 +151,7 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        'Surf EW Rs.99 May',
+                                        taskController.getCompanyValue('name'),
                                         style: GoogleFonts.poppins(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w600,
@@ -154,119 +164,143 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF6C63FF,
+                                        color: _getStatusColor(
+                                          siteId,
                                         ).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        'Active',
+                                        _getStatusText(siteId),
                                         style: GoogleFonts.poppins(
-                                          color: const Color(0xFF6C63FF),
+                                          color: _getStatusColor(siteId),
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-
+                                const SizedBox(height: 20),
+                                // Site Information
+                                Text(
+                                  'Site Information',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                                 const SizedBox(height: 12),
-
-                                // Details grid
                                 Column(
                                   children: [
-                                    _buildDetailItem('City', 'Mahmudabad'),
-                                    SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'State',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'state',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'District',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'district',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'City/Town',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'cityTown',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
                                     _buildDetailItem(
                                       'Media type',
-                                      'Wallbuffer',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'media',
+                                      ),
                                     ),
-                                    SizedBox(height: 8),
-                                    _buildDetailItem('Size', '50x20'),
-                                    SizedBox(height: 8),
-                                    _buildDetailItem('Illumination', 'FL'),
-                                    SizedBox(height: 8),
-                                    _buildDetailItem('State', 'Uttar Pradesh'),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'Location',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'location',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'Type',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'type',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'Units',
+                                      taskController.getSiteValue(
+                                        siteId,
+                                        'units',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildDetailItem(
+                                      'Width × Height',
+                                      '${taskController.getSiteValue(siteId, 'width')} × ${taskController.getSiteValue(siteId, 'height')}',
+                                    ),
+                                    const SizedBox(height: 8),
                                     _buildLocationItem(),
                                   ],
                                 ),
-                                // GridView.count(
-                                //   crossAxisCount: 2,
-                                //   shrinkWrap: true,
-                                //   physics: const NeverScrollableScrollPhysics(),
-                                //   // childAspectRatio: 5,
-                                //   // crossAxisSpacing: 16,
-                                //   // mainAxisSpacing: 16,
-                                //   children: [
-                                //     _buildDetailItem('City', 'Mahmudabad'),
-                                //     _buildDetailItem(
-                                //       'Media type',
-                                //       'Wallbuffer',
-                                //     ),
-                                //     _buildDetailItem('Size', '50x20'),
-                                //     _buildDetailItem('Illumination', 'FL'),
-                                //     _buildDetailItem('State', 'Uttar Pradesh'),
-                                //     _buildLocationItem(),
-                                //   ],
-                                // ),
-                                const SizedBox(height: 18),
-
-                                // Expandable section
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _showDetails = !_showDetails;
-                                    });
-                                  },
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        _showDetails
-                                            ? 'Less details'
-                                            : 'More details',
-                                        style: GoogleFonts.poppins(
-                                          color: const Color(0xFF6C63FF),
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Icon(
-                                        _showDetails
-                                            ? Icons.expand_less
-                                            : Icons.expand_more,
-                                        color: const Color(0xFF6C63FF),
-                                      ),
-                                    ],
+                                const SizedBox(height: 20),
+                                // Company Details
+                                Text(
+                                  'Company Details',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-
-                                // Additional details (conditional)
-                                if (_showDetails) ...[
-                                  _buildAdditionalDetail(
-                                    'Start Date',
-                                    '08 May 2025',
+                                const SizedBox(height: 12),
+                                _buildDetailItem(
+                                  'Contact Person',
+                                  taskController.getSiteValue(
+                                    siteId,
+                                    'companyContactPerson',
                                   ),
-                                  _buildAdditionalDetail(
-                                    'End Date',
-                                    '06 Jun 2025',
+                                ),
+                                const SizedBox(height: 8),
+                                _buildDetailItem(
+                                  'Contact Number',
+                                  taskController.getSiteValue(
+                                    siteId,
+                                    'companyContactNumber',
                                   ),
-                                  _buildAdditionalDetail(
-                                    'Task Date',
-                                    '30 Jun 2025',
-                                  ),
-                                  _buildAdditionalDetail(
-                                    'Site Id',
-                                    'ST10240350',
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-
+                                ),
+                                const SizedBox(height: 24),
                                 // Action button
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      // Extract site ID from task data
+
+                                      final siteName = taskController.getValue(
+                                        'location',
+                                      );
+
+                                      Get.to(
+                                        () => UploadMediaScreen(
+                                          siteId: siteId,
+                                          siteName: siteName,
+                                        ),
+                                      );
+                                    },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFF6C63FF),
                                       foregroundColor: Colors.white,
@@ -299,10 +333,10 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    );
+                  },
+                );
+              }),
             ),
           ],
         ),
@@ -310,13 +344,85 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
     );
   }
 
+  Widget _buildMediaPreview(String siteId) {
+    final mediaUrls = taskController.getSiteMediaUrls(siteId);
+
+    if (mediaUrls.isNotEmpty) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          image: DecorationImage(
+            image: NetworkImage(mediaUrls.first),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 180,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.photo_camera_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text('Media Preview', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String siteId) {
+    final status = taskController.getSiteStatus(siteId);
+    switch (status) {
+      case 'completed':
+        return Colors.green;
+      case 'ongoing':
+        return const Color(0xFF6C63FF);
+      case 'expired':
+        return Colors.red;
+      default:
+        return Colors.orange;
+    }
+  }
+
+  String _getStatusText(String siteId) {
+    final status = taskController.getSiteStatus(siteId);
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'ongoing':
+        return 'Active';
+      case 'expired':
+        return 'Expired';
+      default:
+        return 'Pending';
+    }
+  }
+
   Widget _buildDetailItem(String title, String value) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: GoogleFonts.poppins(color: Colors.black, fontSize: 13),
+        SizedBox(
+          width: 100,
+          child: Text(
+            title,
+            style: GoogleFonts.poppins(color: Colors.black, fontSize: 13),
+          ),
         ),
         const SizedBox(width: 2),
         Text(
@@ -351,10 +457,9 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
           style: GoogleFonts.poppins(color: Colors.black, fontSize: 13),
         ),
         const SizedBox(width: 4),
-
         Expanded(
           child: Text(
-            'Various location',
+            'View on map',
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w500,
               fontSize: 12,
@@ -375,34 +480,6 @@ class _UserTasksScreenState extends State<UserTasksScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAdditionalDetail(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              title,
-              style: GoogleFonts.poppins(color: Colors.grey, fontSize: 15),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.poppins(
-                fontWeight: FontWeight.w500,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

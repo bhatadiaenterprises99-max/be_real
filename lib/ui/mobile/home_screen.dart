@@ -1,12 +1,18 @@
 import 'package:be_real/routes/app_routes.dart';
+import 'package:be_real/utils/get_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:get/route_manager.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import '../controllers/home_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Initialize and inject the controller
+    final homeController = Get.put(HomeController());
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       body: SafeArea(
@@ -58,19 +64,23 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       IconButton(
                         icon: const Icon(
-                          Icons.notifications_none,
+                          Icons.refresh,
                           color: Color(0xFF7F8C8D),
                         ),
-                        onPressed: () {},
-                        tooltip: 'Notifications',
+                        onPressed: () => homeController.refreshData(),
+                        tooltip: 'Refresh Data',
                       ),
                       IconButton(
                         icon: const Icon(
-                          Icons.help_outline,
+                          Icons.logout,
                           color: Color(0xFF7F8C8D),
                         ),
-                        onPressed: () {},
-                        tooltip: 'Help & Support',
+                        onPressed: () async {
+                          await GetStorage().erase();
+                          await Helper.clearUserCredential();
+                          Get.offAllNamed(AppRoutes.loginScreen);
+                        },
+                        tooltip: 'Logout',
                       ),
                     ],
                   ),
@@ -89,68 +99,119 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 18,
-                  mainAxisSpacing: 18,
-                  childAspectRatio: 0.9,
-                  children: [
-                    _modernTaskCard(
-                      title: "Today's Tasks",
-                      count: 5,
-                      icon: Icons.today,
-                      color: const Color(0xFFEC407A),
-                      onTap: () {
-                        Get.toNamed(AppRoutes.userTasksScreen);
-                      },
+              child: Obx(() {
+                if (homeController.isLoading.value) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                return RefreshIndicator(
+                  onRefresh: homeController.refreshData,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 18,
+                      mainAxisSpacing: 18,
+                      childAspectRatio: 0.9,
+                      children: [
+                        _modernTaskCard(
+                          title: "Today's Tasks",
+                          count: homeController.todayTasks.value,
+                          icon: Icons.today,
+                          color: const Color(0xFFEC407A),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.userTasksScreen,
+                              arguments: {
+                                'siteId': homeController.todaySiteIds.isNotEmpty
+                                    ? homeController.todaySiteIds[0]
+                                    : null,
+                                'taskType': 'today',
+                              },
+                            );
+                          },
+                        ),
+                        _modernTaskCard(
+                          title: 'Future Tasks',
+                          count: homeController.futureTasks.value,
+                          icon: Icons.calendar_today,
+                          color: const Color(0xFFAB47BC),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.userTasksScreen,
+                              arguments: {
+                                'siteId':
+                                    homeController.futureSiteIds.isNotEmpty
+                                    ? homeController.futureSiteIds[0]
+                                    : null,
+                                'taskType': 'future',
+                              },
+                            );
+                          },
+                        ),
+                        _modernTaskCard(
+                          title: 'Reported Tasks',
+                          count: homeController.reportedTasks.value,
+                          icon: Icons.check_circle_outline,
+                          color: const Color(0xFF42A5F5),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.userTasksScreen,
+                              arguments: {
+                                'siteId':
+                                    homeController.reportedSiteIds.isNotEmpty
+                                    ? homeController.reportedSiteIds[0]
+                                    : null,
+                                'taskType': 'reported',
+                              },
+                            );
+                          },
+                        ),
+                        _modernTaskCard(
+                          title: 'Missed Tasks',
+                          count: homeController.missedTasks.value,
+                          icon: Icons.event_busy,
+                          color: const Color(0xFFFFA726),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.userTasksScreen,
+                              arguments: {
+                                'siteId':
+                                    homeController.missedSiteIds.isNotEmpty
+                                    ? homeController.missedSiteIds[0]
+                                    : null,
+                                'taskType': 'missed',
+                              },
+                            );
+                          },
+                        ),
+                        _modernTaskCard(
+                          title: 'To Be Uploaded',
+                          count: homeController.toBeUploadedTasks.value,
+                          icon: Icons.cloud_upload_outlined,
+                          color: const Color(0xFF26A69A),
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.userTasksScreen,
+                              arguments: {
+                                'siteId':
+                                    homeController
+                                        .toBeUploadedSiteIds
+                                        .isNotEmpty
+                                    ? homeController.toBeUploadedSiteIds[0]
+                                    : null,
+                                'taskType': 'toBeUploaded',
+                              },
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    _modernTaskCard(
-                      title: 'Future Tasks',
-                      count: 0,
-                      icon: Icons.calendar_today,
-                      color: const Color(0xFFAB47BC),
-                    ),
-                    _modernTaskCard(
-                      title: 'Reported Tasks',
-                      count: 0,
-                      icon: Icons.check_circle_outline,
-                      color: const Color(0xFF42A5F5),
-                    ),
-                    _modernTaskCard(
-                      title: 'Missed Tasks',
-                      count: 52,
-                      icon: Icons.event_busy,
-                      color: const Color(0xFFFFA726),
-                    ),
-                    _modernTaskCard(
-                      title: 'To Be Uploaded',
-                      count: 0,
-                      icon: Icons.cloud_upload_outlined,
-                      color: const Color(0xFF26A69A),
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              }),
             ),
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            //   child: Container(
-            //     width: double.infinity,
-            //     decoration: BoxDecoration(
-            //       color: const Color(0xFFE0E7F7),
-            //       borderRadius: BorderRadius.circular(16),
-            //     ),
-            //     padding: const EdgeInsets.all(18),
-            //     child: const Text(
-            //       'Stay productive and keep track of your tasks! 💪',
-            //       style: TextStyle(fontSize: 16, color: Color(0xFF2C3E50)),
-            //       textAlign: TextAlign.center,
-            //     ),
-            //   ),
-            // ),
           ],
         ),
       ),

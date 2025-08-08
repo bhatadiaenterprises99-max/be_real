@@ -1,4 +1,5 @@
 import 'package:be_real/routes/app_routes.dart';
+import 'package:be_real/utils/get_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:be_real/routes/app_pages.dart';
@@ -17,19 +18,6 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("Firebase initialized successfully");
-
-    // Test Firestore connection to verify it's working
-    try {
-      final usersCollection = await FirebaseFirestore.instance
-          .collection('users')
-          .get();
-      print(
-        "Firestore connection successful: ${usersCollection.docs.isNotEmpty ? 'Documents exist' : 'No documents found'}",
-      );
-    } catch (e) {
-      print("Firestore connection error: $e");
-    }
   } catch (e) {
     print("Error initializing Firebase: $e");
   }
@@ -39,17 +27,15 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // If web, always start at login (admin only); else normal login
-    final initialRoute = kIsWeb ? AppRoutes.loginScreen : AppRoutes.loginScreen;
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'BE Real',
       theme: ThemeData(primarySwatch: Colors.blue),
-      initialRoute: initialRoute,
+      initialRoute: AppRoutes.splashScreen,
       getPages: AppPages.routes,
     );
   }

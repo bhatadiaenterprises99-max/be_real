@@ -2,53 +2,56 @@ import 'package:flutter/material.dart';
 
 class CommonButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool isDisabled;
   final bool isLoading;
-  final Color? color;
+  final Color? backgroundColor;
   final Color? textColor;
-  final double borderRadius;
-  final double height;
-  final double fontSize;
+  final double? width;
+  final double? height;
 
   const CommonButton({
-    super.key,
+    Key? key,
     required this.text,
     required this.onPressed,
+    this.isDisabled = false,
     this.isLoading = false,
-    this.color,
+    this.backgroundColor,
     this.textColor,
-    this.borderRadius = 12,
-    this.height = 50,
-    this.fontSize = 16,
-  });
+    this.width,
+    this.height,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: height,
+      width: width ?? double.infinity,
+      height: height ?? 50,
       child: ElevatedButton(
+        onPressed: (isDisabled || isLoading) ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: color ?? Theme.of(context).primaryColor,
+          backgroundColor: backgroundColor ?? Colors.blue,
+          foregroundColor: textColor ?? Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(10),
           ),
+          elevation: 2,
         ),
-        onPressed: isLoading ? null : onPressed,
         child: isLoading
             ? const SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
+                  color: Colors.white,
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
             : Text(
                 text,
                 style: TextStyle(
-                  color: textColor ?? Colors.white,
-                  fontSize: fontSize,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: textColor ?? Colors.white,
                 ),
               ),
       ),

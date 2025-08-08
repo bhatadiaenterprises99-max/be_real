@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'dart:html' as html;
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -262,17 +261,21 @@ class _MediaViewerState extends State<MediaViewer> {
   }
 
   // Method to open URL in browser as fallback
-  void _launchUrlFallback(String url) {
-    // For web platform
+  void _launchUrlFallback(String url) async {
     if (kIsWeb) {
-      // Open in a new tab
-      final anchor = html.AnchorElement(href: url)
-        ..target = '_blank'
-        ..rel = 'noopener noreferrer'
-        ..click();
+      // On web, open in new tab using JS interop or url_launcher_web
+      // You can use url_launcher for both platforms.
+      // Example:
+      // import 'package:url_launcher/url_launcher.dart';
+      // await launchUrl(Uri.parse(url));
+      // For now, just show a message if url_launcher is not set up.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Open in browser is not supported in this build.'),
+        ),
+      );
     } else {
-      // For non-web, you would typically use url_launcher package
-      // But for this fix we'll just show a message
+      // For non-web, show a message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cannot open URL directly on this platform')),
       );

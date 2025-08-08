@@ -19,4 +19,11 @@ class Helper {
     }
     return null;
   }
+  static Future<void> clearUserCredential() async {
+    try {
+      await _storage.remove("id");
+    } catch (e) {
+      print("Error $e");
+    }
+  }
 }

@@ -22,6 +22,8 @@ class AuthController extends GetxController {
         final user = monitor.docs.first;
         if (user['password'] == password.trim()) {
           await Helper.setUserCredential(user.id);
+          // Store the monitor's ID
+          // await Helper.setUserCredential(user.id);
           Get.offAllNamed(AppRoutes.home);
           Get.snackbar('Login Successful', 'Welcome back, $username!');
         } else {
