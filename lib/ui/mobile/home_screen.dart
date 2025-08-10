@@ -10,7 +10,6 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Initialize and inject the controller
     final homeController = Get.put(HomeController());
 
     return Scaffold(
@@ -19,7 +18,6 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Modern AppBar with avatar and actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               child: Row(
@@ -101,112 +99,125 @@ class HomeScreen extends StatelessWidget {
             Expanded(
               child: Obx(() {
                 if (homeController.isLoading.value) {
-                  return Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 return RefreshIndicator(
                   onRefresh: homeController.refreshData,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GridView.count(
-                      shrinkWrap: true,
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 18,
-                      mainAxisSpacing: 18,
-                      childAspectRatio: 0.9,
-                      children: [
-                        _modernTaskCard(
-                          title: "Today's Tasks",
-                          count: homeController.todayTasks.value,
-                          icon: Icons.today,
-                          color: const Color(0xFFEC407A),
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.userTasksScreen,
-                              arguments: {
-                                'siteId': homeController.todaySiteIds.isNotEmpty
-                                    ? homeController.todaySiteIds[0]
-                                    : null,
-                                'taskType': 'today',
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final crossAxisCount = constraints.maxWidth > 600
+                            ? 3
+                            : 2;
+                        return GridView.count(
+                          shrinkWrap: true,
+                          crossAxisCount: crossAxisCount,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: constraints.maxWidth > 600
+                              ? 1.0
+                              : 0.85,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            _modernTaskCard(
+                              title: "Today's Tasks",
+                              count: homeController.todayTasks.value,
+                              icon: Icons.today,
+                              color: const Color(0xFFEC407A),
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.userTasksScreen,
+                                  arguments: {
+                                    'siteId':
+                                        homeController.todaySiteIds.isNotEmpty
+                                        ? homeController.todaySiteIds[0]
+                                        : null,
+                                    'taskType': 'today',
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
-                        _modernTaskCard(
-                          title: 'Future Tasks',
-                          count: homeController.futureTasks.value,
-                          icon: Icons.calendar_today,
-                          color: const Color(0xFFAB47BC),
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.userTasksScreen,
-                              arguments: {
-                                'siteId':
-                                    homeController.futureSiteIds.isNotEmpty
-                                    ? homeController.futureSiteIds[0]
-                                    : null,
-                                'taskType': 'future',
+                            ),
+                            _modernTaskCard(
+                              title: 'Future Tasks',
+                              count: homeController.futureTasks.value,
+                              icon: Icons.calendar_today,
+                              color: const Color(0xFFAB47BC),
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.userTasksScreen,
+                                  arguments: {
+                                    'siteId':
+                                        homeController.futureSiteIds.isNotEmpty
+                                        ? homeController.futureSiteIds[0]
+                                        : null,
+                                    'taskType': 'future',
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
-                        _modernTaskCard(
-                          title: 'Reported Tasks',
-                          count: homeController.reportedTasks.value,
-                          icon: Icons.check_circle_outline,
-                          color: const Color(0xFF42A5F5),
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.userTasksScreen,
-                              arguments: {
-                                'siteId':
-                                    homeController.reportedSiteIds.isNotEmpty
-                                    ? homeController.reportedSiteIds[0]
-                                    : null,
-                                'taskType': 'reported',
+                            ),
+                            _modernTaskCard(
+                              title: 'Reported Tasks',
+                              count: homeController.reportedTasks.value,
+                              icon: Icons.check_circle_outline,
+                              color: const Color(0xFF42A5F5),
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.userTasksScreen,
+                                  arguments: {
+                                    'siteId':
+                                        homeController
+                                            .reportedSiteIds
+                                            .isNotEmpty
+                                        ? homeController.reportedSiteIds[0]
+                                        : null,
+                                    'taskType': 'reported',
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
-                        _modernTaskCard(
-                          title: 'Missed Tasks',
-                          count: homeController.missedTasks.value,
-                          icon: Icons.event_busy,
-                          color: const Color(0xFFFFA726),
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.userTasksScreen,
-                              arguments: {
-                                'siteId':
-                                    homeController.missedSiteIds.isNotEmpty
-                                    ? homeController.missedSiteIds[0]
-                                    : null,
-                                'taskType': 'missed',
+                            ),
+                            _modernTaskCard(
+                              title: 'Missed Tasks',
+                              count: homeController.missedTasks.value,
+                              icon: Icons.event_busy,
+                              color: const Color(0xFFFFA726),
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.userTasksScreen,
+                                  arguments: {
+                                    'siteId':
+                                        homeController.missedSiteIds.isNotEmpty
+                                        ? homeController.missedSiteIds[0]
+                                        : null,
+                                    'taskType': 'missed',
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
-                        _modernTaskCard(
-                          title: 'To Be Uploaded',
-                          count: homeController.toBeUploadedTasks.value,
-                          icon: Icons.cloud_upload_outlined,
-                          color: const Color(0xFF26A69A),
-                          onTap: () {
-                            Get.toNamed(
-                              AppRoutes.userTasksScreen,
-                              arguments: {
-                                'siteId':
-                                    homeController
-                                        .toBeUploadedSiteIds
-                                        .isNotEmpty
-                                    ? homeController.toBeUploadedSiteIds[0]
-                                    : null,
-                                'taskType': 'toBeUploaded',
+                            ),
+                            _modernTaskCard(
+                              title: 'To Be Uploaded',
+                              count: homeController.toBeUploadedTasks.value,
+                              icon: Icons.cloud_upload_outlined,
+                              color: const Color(0xFF26A69A),
+                              onTap: () {
+                                Get.toNamed(
+                                  AppRoutes.userTasksScreen,
+                                  arguments: {
+                                    'siteId':
+                                        homeController
+                                            .toBeUploadedSiteIds
+                                            .isNotEmpty
+                                        ? homeController.toBeUploadedSiteIds[0]
+                                        : null,
+                                    'taskType': 'toBeUploaded',
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 );
@@ -225,95 +236,122 @@ class HomeScreen extends StatelessWidget {
     required Color color,
     VoidCallback? onTap,
   }) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.95, end: 1),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutBack,
-      builder: (context, scale, child) {
-        return Transform.scale(
-          scale: scale,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: onTap,
-              child: Container(
-                decoration: BoxDecoration(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 200;
+        final fontSize = isSmallScreen ? 14.0 : 16.0;
+        final countFontSize = isSmallScreen ? 18.0 : 20.0;
+        final iconSize = isSmallScreen ? 28.0 : 32.0;
+        final padding = isSmallScreen ? 8.0 : 12.0;
+
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.95, end: 1),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutBack,
+          builder: (context, scale, child) {
+            return Transform.scale(
+              scale: scale,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
                   borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(
-                    colors: [color.withOpacity(0.85), color.withOpacity(0.65)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.18),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.18),
-                    width: 1.2,
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: SingleChildScrollView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.18),
-                            shape: BoxShape.circle,
-                          ),
-                          padding: const EdgeInsets.all(12),
-                          child: Icon(icon, size: 32, color: Colors.white),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          title,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: color.withOpacity(0.18),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Text(
-                            '$count',
-                            style: TextStyle(
-                              color: color,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                  onTap: onTap,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        colors: [
+                          color.withOpacity(0.85),
+                          color.withOpacity(0.65),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.18),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
                         ),
                       ],
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.18),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(padding),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: EdgeInsets.all(padding),
+                            child: Icon(
+                              icon,
+                              size: iconSize,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: padding),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: fontSize,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: padding),
+                          Container(
+                            constraints: BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                              maxWidth: isSmallScreen ? 48 : 60,
+                              maxHeight: isSmallScreen ? 48 : 60,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: color.withOpacity(0.18),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '$count',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: countFontSize,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

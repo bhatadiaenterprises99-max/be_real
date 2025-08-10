@@ -74,6 +74,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo or App Name
+                  Image.asset(
+                    'assets/images/app-logo.png',
+                    // height: 100,
+                    // width: 100,
+                    fit: BoxFit.cover,
+                  ),
                   Center(
                     child: Text(
                       "Sign In",
@@ -187,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                     ),
                   ),
-                  // const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   // // Forgot Password
                   // TextButton(
                   //   onPressed: () {},
