@@ -13,7 +13,7 @@ class SiteTable extends StatelessWidget {
   final String Function(String)? getMonitorName;
   final Function(String, String)? onAssignMonitor;
   final List<Map<String, dynamic>>? monitors;
-  final VoidCallback? onRefresh; // Add refresh callback
+  final VoidCallback? onRefresh;
 
   const SiteTable({
     super.key,
@@ -24,7 +24,7 @@ class SiteTable extends StatelessWidget {
     this.getMonitorName,
     this.onAssignMonitor,
     this.monitors,
-    this.onRefresh, // Add this parameter
+    this.onRefresh,
   });
 
   @override
@@ -83,32 +83,45 @@ class SiteTable extends StatelessWidget {
       horizontalMargin: 12,
       minWidth: 900,
       columns: [
+        // New order: site ID, media, state, city, location, start date, end date, company name, status, monitor, actions
+        const DataColumn2(label: Text('Site ID'), size: ColumnSize.S),
+        const DataColumn2(label: Text('Media'), size: ColumnSize.M),
         const DataColumn2(label: Text('State'), size: ColumnSize.M),
-        const DataColumn2(label: Text('District'), size: ColumnSize.M),
         const DataColumn2(label: Text('City/Town'), size: ColumnSize.M),
         const DataColumn2(label: Text('Location'), size: ColumnSize.L),
-        const DataColumn2(label: Text('Type'), size: ColumnSize.S),
-        const DataColumn2(label: Text('Media'), size: ColumnSize.M),
+        const DataColumn2(label: Text('Start Date'), size: ColumnSize.M),
+        const DataColumn2(label: Text('End Date'), size: ColumnSize.M),
+        const DataColumn2(label: Text('Company'), size: ColumnSize.M),
+        // const DataColumn2(label: Text('Type'), size: ColumnSize.S),
         const DataColumn2(label: Text('Units'), size: ColumnSize.S),
-        const DataColumn2(label: Text('Facia'), size: ColumnSize.S),
-        const DataColumn2(label: Text('W x H'), size: ColumnSize.S),
+        const DataColumn2(label: Text('Dimensions'), size: ColumnSize.S),
         const DataColumn2(label: Text('Status'), size: ColumnSize.S),
         // Add Monitor column if monitor functions are provided
         if (getMonitorName != null)
           const DataColumn2(label: Text('Monitor'), size: ColumnSize.M),
-        const DataColumn2(label: Text('Actions'), size: ColumnSize.M),
+        const DataColumn2(label: Text('Actions'), size: ColumnSize.S),
       ],
       rows: sites.map((site) {
+        final startDate = site['startDate'] != null
+            ? _formatDate(site['startDate'])
+            : 'Not set';
+        final endDate = site['endDate'] != null
+            ? _formatDate(site['endDate'])
+            : 'Not set';
+
         return DataRow(
           cells: [
+            // New order of cells to match column order
+            DataCell(Text(site['id']?.toString().substring(0, 6) ?? 'N/A')),
+            DataCell(Text(site['media'] ?? '')),
             DataCell(Text(site['state'] ?? '')),
-            DataCell(Text(site['district'] ?? '')),
             DataCell(Text(site['cityTown'] ?? '')),
             DataCell(Text(site['location'] ?? '')),
-            DataCell(Text(site['type'] ?? '')),
-            DataCell(Text(site['media'] ?? '')),
+            DataCell(Text(startDate)),
+            DataCell(Text(endDate)),
+            DataCell(Text(getCompanyName(site['companyId'] ?? ''))),
+            // DataCell(Text(site['type'] ?? '')),
             DataCell(Text(site['units']?.toString() ?? '')),
-            DataCell(Text(site['facia'] ?? '')),
             DataCell(Text('${site['width'] ?? ''} x ${site['height'] ?? ''}')),
             DataCell(
               Container(
@@ -129,20 +142,34 @@ class SiteTable extends StatelessWidget {
             // Add Monitor cell if monitor functions are provided
             if (getMonitorName != null) DataCell(_buildMonitorAssignment(site)),
             DataCell(
-              TextButton.icon(
+              IconButton(
                 onPressed: () => onViewSiteDetails(site['id']),
                 icon: const Icon(Icons.visibility, size: 18),
-                label: const Text('View Details'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
+                tooltip: 'View Details',
+                color: Colors.blue,
               ),
             ),
           ],
         );
       }).toList(),
     );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date == null) return 'Not set';
+
+    try {
+      if (date is DateTime) {
+        return DateFormat('MMM d, yyyy').format(date);
+      } else if (date.runtimeType.toString().contains('Timestamp')) {
+        final timestamp = date.toDate();
+        return DateFormat('MMM d, yyyy').format(timestamp);
+      } else {
+        return 'Invalid date';
+      }
+    } catch (e) {
+      return 'Invalid date';
+    }
   }
 
   Widget _buildMonitorAssignment(Map<String, dynamic> site) {
@@ -177,7 +204,7 @@ class SiteTable extends StatelessWidget {
                   onAssign: (selectedMonitorId) {
                     onAssignMonitor!(site['id'], selectedMonitorId);
                   },
-                  onRefresh: onRefresh, // Pass the refresh callback
+                  onRefresh: onRefresh,
                 ),
               );
             }
@@ -193,9 +220,26 @@ class SiteTable extends StatelessWidget {
       separatorBuilder: (context, index) => const Divider(),
       itemBuilder: (context, index) {
         final site = sites[index];
+
+        final startDate = site['startDate'] != null
+            ? _formatDate(site['startDate'])
+            : 'Not set';
+        final endDate = site['endDate'] != null
+            ? _formatDate(site['endDate'])
+            : 'Not set';
+
         return ExpansionTile(
           title: Row(
             children: [
+              // Show site ID and media in title
+              Text(
+                '#${site['id']?.toString().substring(0, 6) ?? 'N/A'} - ',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                ),
+              ),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,12 +248,24 @@ class SiteTable extends StatelessWidget {
                       site['location'] ?? 'Unknown Location',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    Text(
-                      '${site['district'] ?? ''}, ${site['state'] ?? ''}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          '${site['media'] ?? 'Unknown'} | ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          '${site['cityTown'] ?? ''}, ${site['state'] ?? ''}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -231,24 +287,41 @@ class SiteTable extends StatelessWidget {
               ),
             ],
           ),
-          subtitle: Text(
-            'Company: ${getCompanyName(site['companyId'] ?? '')}',
-            style: const TextStyle(fontSize: 12),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Company: ${getCompanyName(site['companyId'] ?? '')}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              Text(
+                'Period: $startDate - $endDate',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
           ),
           children: [
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  _buildInfoRow('Type', site['type'] ?? ''),
+                  _buildInfoRow('Site ID', site['id']?.toString() ?? 'N/A'),
                   _buildInfoRow('Media', site['media'] ?? ''),
+                  _buildInfoRow('State', site['state'] ?? ''),
+                  _buildInfoRow('City/Town', site['cityTown'] ?? ''),
+                  _buildInfoRow('Location', site['location'] ?? ''),
+                  _buildInfoRow('Start Date', startDate),
+                  _buildInfoRow('End Date', endDate),
+                  _buildInfoRow(
+                    'Company',
+                    getCompanyName(site['companyId'] ?? ''),
+                  ),
+                  _buildInfoRow('Type', site['type'] ?? ''),
                   _buildInfoRow('Units', site['units']?.toString() ?? ''),
-                  _buildInfoRow('Facia', site['facia'] ?? ''),
                   _buildInfoRow(
                     'Dimensions',
                     '${site['width'] ?? ''} x ${site['height'] ?? ''}',
                   ),
-                  _buildInfoRow('City/Town', site['cityTown'] ?? ''),
 
                   // Add monitor information if available
                   if (getMonitorName != null) _buildMonitorInfoRow(site),
@@ -281,8 +354,7 @@ class SiteTable extends StatelessWidget {
                                     selectedMonitorId,
                                   );
                                 },
-                                onRefresh:
-                                    onRefresh, // Pass the refresh callback
+                                onRefresh: onRefresh,
                               ),
                             );
                           },
@@ -343,11 +415,11 @@ class SiteTable extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
+          const SizedBox(
             width: 100,
             child: Text(
               'Monitor:',
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(

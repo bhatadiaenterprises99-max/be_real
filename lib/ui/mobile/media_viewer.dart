@@ -1,17 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 
 import 'package:image/image.dart' as img;
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart' show rootBundle;
 
 enum MediaType { image, video }
 
@@ -41,9 +38,6 @@ class _MediaViewerState extends State<MediaViewer> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
   bool _isVideoInitialized = false;
-
-  // Add a map to track image load status
-  final Map<String, bool> _imageLoadAttempts = {};
 
   @override
   void initState() {
@@ -106,17 +100,6 @@ class _MediaViewerState extends State<MediaViewer> {
     }
   }
 
-  // Add a method to verify image URL before displaying
-  Future<bool> _verifyImageUrl(String url) async {
-    try {
-      final response = await http.head(Uri.parse(url));
-      return response.statusCode >= 200 && response.statusCode < 300;
-    } catch (e) {
-      print('Error verifying image URL: $e');
-      return false;
-    }
-  }
-
   // Fixed: Save image with watermark
   Future<void> _saveImageWithWatermark(String url) async {
     try {
@@ -160,12 +143,14 @@ class _MediaViewerState extends State<MediaViewer> {
 
       // Calculate font size based on image size
       int fontSize = (original.width / 40).round().clamp(12, 28);
+      // Use a BitmapFont .fnt file (make sure you have a .fnt and corresponding .png in assets)
+      final fontPath = 'assets/fonts/arial.fnt';
 
       // Draw text (white)
       img.drawString(
         original,
         watermark,
-        font: img.arial24, // Use built-in arial_24 font
+        font: img.arial24,
         x: 20,
         y: original.height - stripHeight + (stripHeight ~/ 3),
         color: img.ColorRgb8(255, 255, 255), // White
@@ -248,8 +233,46 @@ class _MediaViewerState extends State<MediaViewer> {
             },
             itemBuilder: (context, index) {
               if (widget.mediaType == MediaType.image) {
-                // Image viewer with improved error handling
-                return _buildImageViewer(widget.urls[index]);
+                // Image viewer
+                return Center(
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 3.0,
+                    child: Image.network(
+                      widget.urls[index],
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.broken_image,
+                              size: 70,
+                              color: Colors.white70,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load image',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                          ],
+                        );
+                      },
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
               } else {
                 // Video player
                 return Center(
@@ -261,7 +284,7 @@ class _MediaViewerState extends State<MediaViewer> {
             },
           ),
 
-          // Counter indicator at the bottom
+          // Counter indicator
           if (widget.urls.length > 1)
             Positioned(
               bottom: 16,
@@ -287,103 +310,5 @@ class _MediaViewerState extends State<MediaViewer> {
         ],
       ),
     );
-  }
-
-  // Improved image viewer with better error handling
-  Widget _buildImageViewer(String url) {
-    // Clean the Firebase URL if needed
-    String cleanUrl = url;
-    if (url.contains('?')) {
-      // Some encoding issues can happen with query parameters
-      try {
-        final uri = Uri.parse(url);
-        cleanUrl = uri.toString();
-      } catch (e) {
-        print('Error parsing URL: $e');
-      }
-    }
-
-    return Center(
-      child: InteractiveViewer(
-        minScale: 0.5,
-        maxScale: 3.0,
-        child: CachedNetworkImage(
-          imageUrl: cleanUrl,
-          progressIndicatorBuilder: (context, url, progress) => Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              value: progress.progress,
-            ),
-          ),
-          errorWidget: (context, url, error) {
-            print('Full screen image load error: $error for $url');
-
-            // Track this URL as having an error
-            _imageLoadAttempts[url] = true;
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.broken_image, size: 70, color: Colors.white70),
-                const SizedBox(height: 16),
-                Text(
-                  'Failed to load image',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Error: $error',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    // Try direct browser open as fallback
-                    _launchUrlFallback(url);
-                  },
-                  child: const Text('Open in Browser'),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () {
-                    // Force a rebuild to try loading again
-                    setState(() {
-                      _imageLoadAttempts.remove(url);
-                    });
-                  },
-                  child: const Text('Retry Loading'),
-                ),
-              ],
-            );
-          },
-          fit: BoxFit.contain,
-          fadeInDuration: const Duration(milliseconds: 300),
-          memCacheHeight: 1024, // Limit cache size to avoid memory issues
-          cacheKey: '$cleanUrl-cache-key', // Add a custom cache key
-        ),
-      ),
-    );
-  }
-
-  // Method to open URL in browser as fallback
-  void _launchUrlFallback(String url) async {
-    if (kIsWeb) {
-      // On web, open in new tab using JS interop or url_launcher_web
-      // You can use url_launcher for both platforms.
-      // Example:
-      // import 'package:url_launcher/url_launcher.dart';
-      // await launchUrl(Uri.parse(url));
-      // For now, just show a message if url_launcher is not set up.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Open in browser is not supported in this build.'),
-        ),
-      );
-    } else {
-      // For non-web, show a message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cannot open URL directly on this platform')),
-      );
-    }
   }
 }

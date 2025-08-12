@@ -310,6 +310,91 @@ class UploadSiteScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
+            // Date selection section
+            const Text(
+              'Campaign Schedule',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.blueGrey,
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Set start and end dates for all sites in this upload',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+
+            // Date selection rows
+            Row(
+              children: [
+                Expanded(
+                  child: Obx(
+                    () => ListTile(
+                      title: const Text('Start Date'),
+                      subtitle: Text(
+                        controller.startDate.value != null
+                            ? '${controller.startDate.value!.day}/${controller.startDate.value!.month}/${controller.startDate.value!.year}'
+                            : 'Select start date',
+                      ),
+                      leading: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: Get.context!,
+                          initialDate:
+                              controller.startDate.value ?? DateTime.now(),
+                          firstDate: DateTime.now().subtract(
+                            const Duration(days: 30),
+                          ),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365),
+                          ),
+                        );
+                        if (date != null) {
+                          controller.startDate.value = date;
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Obx(
+                    () => ListTile(
+                      title: const Text('End Date'),
+                      subtitle: Text(
+                        controller.endDate.value != null
+                            ? '${controller.endDate.value!.day}/${controller.endDate.value!.month}/${controller.endDate.value!.year}'
+                            : 'Select end date',
+                      ),
+                      leading: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final date = await showDatePicker(
+                          context: Get.context!,
+                          initialDate:
+                              controller.endDate.value ??
+                              (controller.startDate.value?.add(
+                                    const Duration(days: 30),
+                                  ) ??
+                                  DateTime.now().add(const Duration(days: 30))),
+                          firstDate:
+                              controller.startDate.value ?? DateTime.now(),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 365 * 2),
+                          ),
+                        );
+                        if (date != null) {
+                          controller.endDate.value = date;
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
             // Action Buttons
             Row(
               children: [

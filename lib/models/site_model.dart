@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum SiteStatus { pending, ongoing, completed }
+enum SiteStatus { pending, ongoing, completed, rejected }
 
 class SiteModel {
   final String? id;

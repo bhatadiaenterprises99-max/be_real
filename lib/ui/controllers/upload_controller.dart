@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
-
 import 'package:video_compress/video_compress.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'package:image/image.dart' as img;
 
 class UploadController extends GetxController {
   final String siteId;
@@ -26,6 +29,8 @@ class UploadController extends GetxController {
 
   // Observable variables
   final images = <XFile>[].obs;
+  final watermarkedImagePaths =
+      <String, String>{}.obs; // Store watermarked image paths
   final video = Rxn<XFile>();
   final videoThumbnail = Rxn<String>();
   final videoSize = ''.obs;
@@ -192,10 +197,25 @@ class UploadController extends GetxController {
       );
 
       if (image != null) {
-        if (index < images.length) {
-          images[index] = image;
-        } else {
-          images.add(image);
+        // Process the image with watermark
+        final watermarkedImage = await _processImageWithWatermark(image.path);
+
+        if (watermarkedImage != null) {
+          // Save original image for upload to Firebase
+          if (index < images.length) {
+            images[index] = image;
+          } else {
+            images.add(image);
+          }
+
+          // Store watermarked image path for later use
+          watermarkedImagePaths[image.path] = watermarkedImage.path;
+
+          // Save watermarked copy to gallery
+          await GallerySaver.saveImage(
+            watermarkedImage.path,
+            albumName: 'BeReal Sites',
+          );
         }
       }
     } catch (e) {
@@ -208,6 +228,135 @@ class UploadController extends GetxController {
         colorText: Colors.white,
       );
     }
+  }
+
+  // New method to get watermarked image path
+  Future<String?> getWatermarkedImagePath(String originalPath) async {
+    // If we already have watermarked version, return it
+    if (watermarkedImagePaths.containsKey(originalPath)) {
+      return watermarkedImagePaths[originalPath];
+    }
+
+    // If not found, check if we need to generate one (this should not happen normally,
+    // as we already generate it in pickImage, but just in case)
+    final watermarkedImage = await _processImageWithWatermark(originalPath);
+    if (watermarkedImage != null) {
+      watermarkedImagePaths[originalPath] = watermarkedImage.path;
+      return watermarkedImage.path;
+    }
+
+    return null;
+  }
+
+  // New method to process image with watermark
+  Future<File?> _processImageWithWatermark(String imagePath) async {
+    try {
+      final File originalFile = File(imagePath);
+      final Uint8List bytes = await originalFile.readAsBytes();
+
+      final img.Image? originalImage = img.decodeImage(bytes);
+      if (originalImage == null) throw Exception('Could not decode image');
+
+      // Reduce strip height to 10% (min 50px instead of 60px)
+      int stripHeight = (originalImage.height * 0.10).toInt();
+      stripHeight = stripHeight < 50 ? 50 : stripHeight;
+
+      // Blue strip at bottom
+      img.fillRect(
+        originalImage,
+        x1: 0,
+        y1: originalImage.height - stripHeight,
+        x2: originalImage.width,
+        y2: originalImage.height,
+        color: img.ColorRgb8(33, 150, 243),
+      );
+
+      final now = DateTime.now();
+      final String formattedDate = _formatDateTime(now);
+
+      final String coordsText = latitude.value != 0 && longitude.value != 0
+          ? 'Lat: ${latitude.value.toStringAsFixed(6)}, Lng: ${longitude.value.toStringAsFixed(6)}'
+          : 'Location data not available';
+
+      final String locationName = "Site ID: $siteId";
+
+      // Larger font for better visibility
+      final font = img.arial48; // Bigger font size
+
+      // Adjust y positions to fit inside the smaller strip
+      img.drawString(
+        originalImage,
+        formattedDate,
+        font: font,
+        x: 15,
+        y: originalImage.height - stripHeight + 8,
+        color: img.ColorRgb8(255, 255, 255),
+      );
+
+      img.drawString(
+        originalImage,
+        coordsText,
+        font: font,
+        x: 15,
+        y: originalImage.height - stripHeight + 48,
+        color: img.ColorRgb8(255, 255, 255),
+      );
+
+      img.drawString(
+        originalImage,
+        locationName,
+        font: font,
+        x: 15,
+        y: originalImage.height - stripHeight + 88,
+        color: img.ColorRgb8(255, 255, 255),
+      );
+
+      final watermarkedBytes = img.encodeJpg(originalImage, quality: 90);
+      final tempDir = await getTemporaryDirectory();
+      final watermarkedPath =
+          '${tempDir.path}/watermarked_${now.millisecondsSinceEpoch}.jpg';
+      final watermarkedFile = File(watermarkedPath);
+      await watermarkedFile.writeAsBytes(watermarkedBytes);
+
+      return watermarkedFile;
+    } catch (e) {
+      print('Error processing image with watermark: $e');
+      return null;
+    }
+  }
+
+  // Format date time as requested: "August 10, 2023 07:45 PM"
+  String _formatDateTime(DateTime dateTime) {
+    // Month names
+    final List<String> months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    // Get components
+    final int day = dateTime.day;
+    final String month = months[dateTime.month - 1];
+    final int year = dateTime.year;
+
+    // Format hour for 12-hour clock with AM/PM
+    int hour = dateTime.hour;
+    final String amPm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+
+    // Format minute with leading zero if needed
+    final String minute = dateTime.minute.toString().padLeft(2, '0');
+
+    return '$month $day, $year $hour:$minute $amPm';
   }
 
   void removeImage(int index) {
@@ -266,7 +415,7 @@ class UploadController extends GetxController {
     videoSize.value = '';
   }
 
-  // Updated uploadData method
+  // Updated uploadData method to use watermarked images
   Future<void> uploadData() async {
     if (images.isEmpty && video.value == null) {
       Get.snackbar(
@@ -296,24 +445,40 @@ class UploadController extends GetxController {
     try {
       // Calculate total upload size for progress tracking
       final List<File> filesToUpload = [];
+      // Use watermarked images instead of originals
       for (XFile image in images) {
-        filesToUpload.add(File(image.path));
+        String? watermarkedPath = await getWatermarkedImagePath(image.path);
+        if (watermarkedPath != null) {
+          filesToUpload.add(File(watermarkedPath));
+        } else {
+          // Fallback to original if watermarked version not available
+          filesToUpload.add(File(image.path));
+        }
       }
+
       if (video.value != null) {
         filesToUpload.add(File(video.value!.path));
       }
+
       final totalSize = await _calculateTotalSize(filesToUpload);
       double uploadedSize = 0;
 
-      // Upload images
+      // Upload watermarked images
       List<String> imageUrls = [];
-      for (XFile image in images) {
+      for (int i = 0; i < images.length; i++) {
+        final XFile image = images[i];
         final String timestamp = DateTime.now().millisecondsSinceEpoch
             .toString();
         final String imagePath = 'sites/$siteId/images/img_$timestamp.jpg';
         final Reference ref = _storage.ref().child(imagePath);
-        final File imageFile = File(image.path);
-        final int fileSize = await imageFile.length();
+
+        // Get watermarked image path
+        String? watermarkedPath = await getWatermarkedImagePath(image.path);
+
+        // Use watermarked image if available, otherwise use original
+        final File imageFile = watermarkedPath != null
+            ? File(watermarkedPath)
+            : File(image.path);
 
         final UploadTask uploadTask = ref.putFile(imageFile);
         uploadTask.snapshotEvents.listen(
@@ -408,7 +573,7 @@ class UploadController extends GetxController {
           'longitude': longitude.value,
           'uploadedAt': FieldValue.serverTimestamp(),
         },
-        'status': 'reported',
+        'status': 'completed',
       });
 
       uploadProgress.value = 1.0;

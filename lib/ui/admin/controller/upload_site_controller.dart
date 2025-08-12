@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:be_real/ui/admin/controller/dashboard_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:file_picker/file_picker.dart';
@@ -29,6 +30,10 @@ class UploadSiteController extends GetxController {
   final uploadProgress = 0.obs;
   final totalSites = 0.obs;
   final processedSites = 0.obs;
+
+  // Add these new properties for date selection
+  final startDate = Rxn<DateTime>();
+  final endDate = Rxn<DateTime>();
 
   @override
   void onInit() {
@@ -252,6 +257,23 @@ class UploadSiteController extends GetxController {
     return value.toString().trim();
   }
 
+  // Add this method to validate and format dates
+  String? validateDates() {
+    if (startDate.value == null) {
+      return 'Start date is required';
+    }
+
+    if (endDate.value == null) {
+      return 'End date is required';
+    }
+
+    if (endDate.value!.isBefore(startDate.value!)) {
+      return 'End date must be after start date';
+    }
+
+    return null;
+  }
+
   // Upload sites to Firestore
   Future<void> uploadSites() async {
     // Validate company selection
@@ -345,6 +367,12 @@ class UploadSiteController extends GetxController {
         }
       }
 
+      // Default dates if not set elsewhere
+      final defaultStartDate = startDate.value ?? DateTime.now();
+      final defaultEndDate =
+          endDate.value ??
+          DateTime.now().add(const Duration(days: 30)); // Default 30 days
+
       // Upload sites in batches to avoid overloading Firestore
       const batchSize = 20;
       for (int i = 0; i < newSites.length; i += batchSize) {
@@ -372,6 +400,8 @@ class UploadSiteController extends GetxController {
             'siteCode': site['siteCode'] ?? '',
             'createdAt': FieldValue.serverTimestamp(),
             'status': 'pending', // Default status
+            'startDate': defaultStartDate, // Add start date
+            'endDate': defaultEndDate, // Add end date
             'monitorUploads': {
               'images': [], // List of Firebase Storage URLs
               'videos': [], // List of Firebase Storage URLs
@@ -411,6 +441,11 @@ class UploadSiteController extends GetxController {
       // Reset the form if upload was successful
       if (newSites.isNotEmpty) {
         _resetForm(keepCompany: true);
+      }
+
+      // Refresh dashboard statistics
+      if (Get.isRegistered<DashboardController>()) {
+        Get.find<DashboardController>().refreshStatistics();
       }
     } catch (e) {
       Get.snackbar(

@@ -1,55 +1,146 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'controller/dashboard_controller.dart';
 
 class DashboardCards extends StatelessWidget {
   const DashboardCards({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Initialize the dashboard controller
+    final dashboardController = Get.put(DashboardController());
+
     // Responsive: 2 columns on web, 1 on mobile
     final isWide = MediaQuery.of(context).size.width > 700;
+
     return Padding(
       padding: const EdgeInsets.all(20.0),
-      child: GridView(
-        shrinkWrap: true,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: isWide ? 4 : 2,
-          crossAxisSpacing: 18,
-          mainAxisSpacing: 18,
-          childAspectRatio: 1.1,
-        ),
-        children: const [
-          _MiniDashboardCard(
-            icon: Icons.verified,
-            title: 'Approved',
-            count: 42,
-            gradient: LinearGradient(
-              colors: [Color(0xFF4F8FFF), Color(0xFF6DD5FA)],
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Dashboard Overview',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
+              ),
+              Obx(() {
+                if (dashboardController.isLoading.value) {
+                  return const SizedBox.shrink();
+                }
+
+                return ElevatedButton.icon(
+                  onPressed: dashboardController.refreshStatistics,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Refresh'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                  ),
+                );
+              }),
+            ],
           ),
-          _MiniDashboardCard(
-            icon: Icons.cancel_rounded,
-            title: 'Rejected',
-            count: 7,
-            gradient: LinearGradient(
-              colors: [Color(0xFFFF5E62), Color(0xFFFF9966)],
-            ),
+          const SizedBox(height: 8),
+          Text(
+            'Real-time statistics from all sites',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
-          _MiniDashboardCard(
-            icon: Icons.verified_user,
-            title: 'Verified',
-            count: 18,
-            gradient: LinearGradient(
-              colors: [Color(0xFF43E97B), Color(0xFF38F9D7)],
-            ),
-          ),
-          _MiniDashboardCard(
-            icon: Icons.report_problem_rounded,
-            title: 'Delayed',
-            count: 3,
-            gradient: LinearGradient(
-              colors: [Color(0xFFFFC371), Color(0xFFFF5F6D)],
-            ),
-          ),
+          const SizedBox(height: 20),
+
+          // Show loading, error, or grid
+          Obx(() {
+            if (dashboardController.isLoading.value) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+
+            if (dashboardController.hasError.value) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        dashboardController.errorMessage.value,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: dashboardController.refreshStatistics,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return GridView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isWide ? 4 : 2,
+                crossAxisSpacing: 18,
+                mainAxisSpacing: 18,
+                childAspectRatio: 1.1,
+              ),
+              children: [
+                _MiniDashboardCard(
+                  icon: Icons.verified,
+                  title: 'Approved',
+                  count: dashboardController.approved.value,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4F8FFF), Color(0xFF6DD5FA)],
+                  ),
+                ),
+                _MiniDashboardCard(
+                  icon: Icons.cancel_rounded,
+                  title: 'Rejected',
+                  count: dashboardController.rejected.value,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF5E62), Color(0xFFFF9966)],
+                  ),
+                ),
+                _MiniDashboardCard(
+                  icon: Icons.verified_user,
+                  title: 'Verified',
+                  count: dashboardController.verified.value,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF43E97B), Color(0xFF38F9D7)],
+                  ),
+                ),
+                _MiniDashboardCard(
+                  icon: Icons.report_problem_rounded,
+                  title: 'Delayed',
+                  count: dashboardController.delayed.value,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFC371), Color(0xFFFF5F6D)],
+                  ),
+                ),
+              ],
+            );
+          }),
         ],
       ),
     );

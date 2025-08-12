@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:be_real/ui/controllers/upload_controller.dart';
 import 'package:be_real/widgets/common_button.dart';
+import 'package:image_picker/image_picker.dart';
 
 class UploadMediaScreen extends StatefulWidget {
   final String siteId;
@@ -244,43 +245,8 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
     return GestureDetector(
       onTap: () {
         if (hasImage) {
-          // Show option to remove or replace image
-          Get.bottomSheet(
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.refresh),
-                    title: const Text('Replace Image'),
-                    onTap: () {
-                      Get.back();
-                      controller.pickImage(index);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.delete, color: Colors.red),
-                    title: const Text(
-                      'Remove Image',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    onTap: () {
-                      Get.back();
-                      controller.removeImage(index);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          );
+          // Open full-screen view of the image
+          _openFullScreenImage(controller.images[index], index, controller);
         } else {
           controller.pickImage(index);
         }
@@ -316,6 +282,81 @@ class _UploadMediaScreenState extends State<UploadMediaScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  // Modified method for full-screen image view to show watermarked image
+  void _openFullScreenImage(
+    XFile image,
+    int index,
+    UploadController controller,
+  ) async {
+    // First check if we have a watermarked version of this image
+    final watermarkedPath = await controller.getWatermarkedImagePath(
+      image.path,
+    );
+
+    Get.to(
+      () => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Get.back(),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () {
+                Get.dialog(
+                  AlertDialog(
+                    title: const Text('Delete Image'),
+                    content: const Text(
+                      'Are you sure you want to remove this image?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Get.back(),
+                        child: const Text('CANCEL'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          controller.removeImage(index);
+                          Get.back(); // Close dialog
+                          Get.back(); // Return to previous screen
+                        },
+                        child: const Text(
+                          'DELETE',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 3.0,
+            child: Hero(
+              tag: 'image_$index',
+              child: Image.file(
+                // Use watermarked image if available, otherwise use original
+                File(watermarkedPath ?? image.path),
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            ),
+          ),
+        ),
+      ),
+      transition: Transition.fade,
     );
   }
 

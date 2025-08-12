@@ -111,6 +111,14 @@ class HomeController extends GetxController {
         final monitorUploads =
             site['monitorUploads'] as Map<String, dynamic>? ?? {};
 
+        // Get site dates
+        final startDate = site['startDate'] is Timestamp
+            ? (site['startDate'] as Timestamp).toDate()
+            : null;
+        final endDate = site['endDate'] is Timestamp
+            ? (site['endDate'] as Timestamp).toDate()
+            : null;
+
         // Count by status and other conditions
         if (status == 'pending' || status == 'ongoing') {
           // Site needs work - check if it has uploads
@@ -124,15 +132,37 @@ class HomeController extends GetxController {
             toBeUploadedSiteIds.add(siteId);
           }
 
-          // Check dates (for simplicity, assuming all active sites are either today or future)
-          // In a real app, you would have specific due dates to check against
-          if (todayCount % 2 == 0) {
-            // Just for demo, alternate between today and future
+          // Check dates to determine if it's a today's task or future task
+          if (startDate != null && endDate != null) {
+            final startDay = DateTime(
+              startDate.year,
+              startDate.month,
+              startDate.day,
+            );
+            final endDay = DateTime(endDate.year, endDate.month, endDate.day);
+
+            // Task is for today if:
+            // 1. Today is between start and end dates (inclusive), or
+            // 2. Today is the start date or end date
+            if ((today.isAtSameMomentAs(startDay) || today.isAfter(startDay)) &&
+                (today.isAtSameMomentAs(endDay) || today.isBefore(endDay))) {
+              todayCount++;
+              todaySiteIds.add(siteId);
+            }
+            // Task is for the future if the start date is after today
+            else if (startDay.isAfter(today)) {
+              future++;
+              futureSiteIds.add(siteId);
+            }
+            // If end date has passed but status isn't completed, it's missed
+            else if (endDay.isBefore(today) && status != 'completed') {
+              missed++;
+              missedSiteIds.add(siteId);
+            }
+          } else {
+            // If no dates are set, default to today's task
             todayCount++;
             todaySiteIds.add(siteId);
-          } else {
-            future++;
-            futureSiteIds.add(siteId);
           }
         } else if (status == 'completed') {
           // Count as reported

@@ -327,4 +327,14 @@ class TaskController extends GetxController {
     ];
     return months[month - 1];
   }
+
+  // Get site video uploads by ID
+  List<String> getSiteVideoUrls(String siteId) {
+    final site = assignedSites.firstWhereOrNull((s) => s['id'] == siteId);
+    if (site == null) return [];
+
+    final uploads = site['monitorUploads'] as Map<String, dynamic>? ?? {};
+    final videos = uploads['videos'] as List? ?? [];
+    return videos.map((e) => e.toString()).toList();
+  }
 }

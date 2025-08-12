@@ -238,6 +238,7 @@ class _AdminSiteUploadDialogState extends State<AdminSiteUploadDialog> {
 
       // Update Firestore document with the new data
       await _firestore.collection('sites').doc(widget.siteId).update({
+        "status": "completed",
         'monitorUploads': {
           'images': imageUrls,
           'videos': videoUrls,
